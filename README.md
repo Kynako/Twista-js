@@ -5,7 +5,7 @@ A simple Twitter API liblary for Scriptable.
 ## Requirement
 - [Scriptable](https://scriptable.app/)
 - [CryptoJS](https://cryptojs.gitbook.io/docs/)
-   - CryptoJS.HmacSHA1
+   - CryptoJS.HmacSHA1()
    - CryptoJS.enc.Base64.stringify()
 
 ## Usage
@@ -57,3 +57,50 @@ const res_tweet = tw.post(
 );
 console.log(res_tweet);
 ```
+
+## Reference
+### `.get(endpoint, param)`
+`.get()` sends GET request to endpoint with parameter.
+
+#### Argument
+- `endpoint` ... REST API Endpoint.
+   - It must end with .json.
+- `param` ... Parameter for request body.
+   - e.g.) `{screen_name: 'Twitter'}`
+
+#### Return Value
+It returns JSON.
+
+---
+
+### `.post(endpoint, param)`
+`.post()` sends POST request to endpoint with parameters.
+
+#### Argument
+- `endpoint` ... REST API Endpoint.
+   - It must end with .json.
+- `param` ... Parameter for request body.
+   - e.g.) `{status: 'Hello World!!'}`
+ 
+#### Return Value
+It refurns JSON.
+
+---
+
+### `.upload_image(endpoint, image)`
+`.upload_image()` uploads image.
+
+#### Argument
+- `endpoint` ... REST API Endpoint.
+   - It must end with .json.
+- `image` ... An `Image` Object
+   - e.g.) `Photos.fromLibrary()`, `Image.fromFile()`
+
+#### Return Value
+It returns JSON.
+
+## Author
+- [Twitter](https://twitter.com/k_melodyline?s=21)
+
+## License
+[MIT License](/LICENSE)
