@@ -9,9 +9,23 @@ A simple Twitter API liblary for Scriptable.
    - CryptoJS.enc.Base64.stringify()
 
 ## Usage
+### Init
+Please Run this in Scriptable.
+```JavaScript
+// Save src in /modules/Twista.js
+const url = 'https://raw.githubusercontent.com/Kynako/Twista-js/main/src/Twista.js',
+      r = new Request(url),
+      src = await r.loadString(),
+      fm = FileManager.iCloud(),
+      dirPath = fm.joinPath(fm.documentsDirectory(), 'modules/')
+fm.createDirectory(dirPath, true)
+fm.writeString(dirPath + 'Twista.js', src)
+```
+
+### Ready
 ```JavaScript
 // Ready
-const Twista = importModule('Twista');
+const Twista = importModule('modules/Twista');
 const tw = new TwistaJS(
   {
     CK: ConsumerKey,
