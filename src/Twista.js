@@ -25,28 +25,26 @@ module.exports = class Twista {
   // main methods
   async get(endpoint, param){
     return this._queryParamReq(
-      "GET", endpoint, param
+      "GET", this.rest_base + endpoint, param
     );
   };
   
   async post(endpoint, param){
     return this._bodyParamReq(
-      "POST", endpoint, param
+      "POST", this.rest_base + endpoint, param
     );
   };
   
   // .upload_image()
   async upload_image(endpoint, image){
-    const opt = {
-      method: "POST",
-      url: this.media_base + endpoint,
-      param: {}
-    };
-    const r = new Request(opt.url);
+    const method =  "POST",
+          url = this.media_base + endpoint,
+          param = {};
+    const r = new Request(url);
     r.method = opt.method;
     r.headers = {
       "Content-Type": "multipart/form-data",
-      "Authorization": await this._getAuthHeader(opt)
+      "Authorization": await this._getAuthHeader(method, url, param)
     };
     r.addImageToMultipart(
       image, "media"
@@ -55,43 +53,33 @@ module.exports = class Twista {
   }
 
   // ._bodyParamReq ... for POST, PUT, PATCH DELETE
-  async _bodyParamReq(method, endpoint, param){
-    const opt = {
-      method: method,
-      url: this.rest_base + endpoint,
-      param: param
-    };
-    const r = new Request(opt.url);
-    r.method = opt.method;
+  async _bodyParamReq(method, url, param){
+    const r = new Request(url);
+    r.method = method;
     r.headers = {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": await this._getAuthHeader(opt)
+      "Authorization": await this._getAuthHeader(method, url, param)
     };
     r.body = this._encodeBody(opt.param);
     return r.loadJSON();
   };
   
   // ._queryParamReq() ... for GET
-  async _queryParamReq(method, endpoint, param){
-    const opt = {
-      method: method,
-      url: this.rest_base + endpoint,
-      param: param
-    };
-    const urlQ = opt.url + "?" + Object.keys(param).map((key)=>{
+  async _queryParamReq(method, url, param){
+    const urlQ = url + "?" + Object.keys(param).map((key)=>{
       return key + "=" + this._rfc3986(param[key]);
     }).join("&");
     const r = new Request(urlQ);
-    r.method = opt.method;
+    r.method = method;
     r.headers = {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": await this._getAuthHeader(opt)
+      "Authorization": await this._getAuthHeader(method, url, param)
     }
     return r.loadJSON();
   };
   
   // ._getAuthHeader(...)
-  async _getAuthHeader(opt){
+  async _getAuthHeader(method, url, param){
     const oauthBaseParam = {
       oauth_consumer_key: this.CK,
       oauth_token: this.AT,
@@ -101,12 +89,12 @@ module.exports = class Twista {
       oauth_version: "1.0"
     };
     const oauthParam = {
-      ...opt.param,
+      ...param,
       ...oauthBaseParam
     };
     const signature = await this._generateSignature(
-      opt.method,
-      opt.url,
+      method,
+      url,
       oauthParam,
       this.CS,
       this.AS
