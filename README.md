@@ -26,7 +26,7 @@ fm.writeString(dirPath + 'Twista.js', src)
 ```JavaScript
 // Ready
 const Twista = importModule('modules/Twista');
-const tw = new TwistaJS(
+const tw = new Twista(
   {
     CK: ConsumerKey,
     CS: ConsumerSecretKey,
