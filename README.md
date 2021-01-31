@@ -4,37 +4,43 @@ A simple Twitter API liblary for Scriptable.
 
 ## Requirement
 - [Scriptable](https://scriptable.app/)
+- [unpkg.js](https://gist.github.com/ZicklePop/603b19dd3b9e09f99030bc24e616ca6c)
 - [CryptoJS](https://cryptojs.gitbook.io/docs/)
    - CryptoJS.HmacSHA1()
    - CryptoJS.enc.Base64.stringify()
+- [oauth-1.0a.js](https://github.com/ddo/oauth-1.0a)
 
 ## Usage
-### Init
-Please Run this in Scriptable.
-```JavaScript
-// Save src in /modules/Twista.js
-const url = 'https://raw.githubusercontent.com/Kynako/Twista-js/main/src/Twista.js',
-      r = new Request(url),
-      src = await r.loadString(),
-      fm = FileManager.iCloud(),
-      dirPath = fm.joinPath(fm.documentsDirectory(), 'modules/')
-fm.createDirectory(dirPath, true)
-fm.writeString(dirPath + 'Twista.js', src)
+### Initarize
+```
+// Example Directly Tree
+iCloud/Scriptbale
+└ modules
+  ├ Twista.js
+  ├ unpkg.js
+  ├ (crypto-js)
+  │ └ (crypto-js.js)
+  └ (oauth-1.0a)
+    └ (oauth-1.0a.js)
+// crypto-js and oauth-1.0a will be saved on next step.
 ```
 
 ### Ready
 ```JavaScript
-// Ready
+// libraries
+const unpkg = importModule('modules/unpkg');
+const OAuth = await unpkg('oauth-1.0a');
+const CryptoJS = await unpkg('crypto-js');
 const Twista = importModule('modules/Twista');
-const tw = new Twista(
-  {
-    CK: ConsumerKey,
-    CS: ConsumerSecretKey,
-    AT: AccessToken,
-    AS: AccessTokenSecret
-  },
-  importModule('crypto-js')
-);
+// environmental variables
+const ENV = {
+  CK: ConsumerKey,
+  CS: ConsumerSecretKey,
+  AT: AccessToken,
+  AS: AccessTokenSecret
+};
+// instance
+const tw = new Twista(ENV, OAuth, CryptoJS);
 ```
 
 ### Get tweet
@@ -73,7 +79,7 @@ console.log(res_tweet);
 ```
 
 ## Reference
-### `.get(endpoint, param)`
+### `.get(endpoint, param, basename)`
 `.get()` sends GET request to endpoint with parameter.
 
 #### Argument
@@ -81,6 +87,9 @@ console.log(res_tweet);
    - It must end with .json.
 - `param` ... Parameter for request body.
    - e.g.) `{screen_name: 'Twitter'}`
+- `basename` ... choose the base of url.
+   - `rest` ... `https://api.twitter.com/1.1/`
+   - `media` ... `https://upload.twitter.com/1.1/`
 
 #### Return Value
 It returns JSON.
@@ -101,7 +110,7 @@ It refurns JSON.
 
 ---
 
-### `.upload_image(endpoint, image)`
+### `.upload_image(endpoint, image, patam)`
 `.upload_image()` uploads image.
 
 #### Argument
@@ -109,7 +118,7 @@ It refurns JSON.
    - It must end with .json.
 - `image` ... An `Image` Object
    - e.g.) `Photos.fromLibrary()`, `Image.fromFile()`
-
+- `param` ...
 #### Return Value
 It returns JSON.
 

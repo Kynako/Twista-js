@@ -11,152 +11,102 @@
  * see https://github.com/Kynako/Twista-js/blob/main/LICENSE
  */
 
-module.exports = class Twista {
-  constructor(env, cryptojs){
+class Twista {
+  constructor(env, OAuth, CryptoJS){
     this.CK = env.CK,
     this.CS = env.CS,
     this.AT = env.AT,
     this.AS = env.AS,
+    this.token = {
+      key: this.AT,
+      secret: this.AS
+    },
     this.rest_base = "https://api.twitter.com/1.1/",
     this.media_base = "https://upload.twitter.com/1.1/",
-    this.CryptoJS = cryptojs
+    this.oauth = OAuth({
+      consumer: {
+        key: this.CK,
+        secret: this.CS
+      },
+      signature_method: 'HMAC-SHA1',
+      hash_function(base_string, key){
+        return CryptoJS // dp;
+          .HmacSHA1(base_string, key) // dp;
+          .toString(CryptoJS.enc.Base64);
+      } // dp;
+    });
   };
   
-  // main methods
-  async get(endpoint, param){
-    return this._queryParamReq(
-      "GET", this.rest_base + endpoint, param
-    );
+  get(endpoint, param, basename='rest'){
+    let base = this._chooseBaseUrl(basename);
+    let url = base + endpoint + '?' + this._buildParamString(param);
+    let req_data = {
+      url: url,
+      method: 'GET',
+      data: {}
+    };
+    let r = new Request(req_data.url);
+    r.method = req_data.method;
+    r.headers = {...this._getAuthHeader(req_data)};
+    return r.loadJSON();
   };
   
-  async post(endpoint, param){
-    return this._bodyParamReq(
-      "POST", this.rest_base + endpoint, param
-    );
+  post(endpoint, param, basename='rest'){
+    let base = this._chooseBaseUrl(basename);
+    let url = base + endpoint;
+    let req_data = {
+      url: url,
+      method: 'POST',
+      data: param
+    };
+    let r = new Request(req_data.url);
+    r.method = req_data.method;
+    r.headers = {...this._getAuthHeader(req_data)};
+    r.body = this._buildParamString(param);
+    return r.loadJSON();
   };
-  
-  // .upload_image()
-  async upload_image(endpoint, image){
-    const method =  "POST",
-          url = this.media_base + endpoint,
-          param = {};
-    const r = new Request(url);
-    r.method = opt.method;
+
+  async upload_image(endpoint, image, param){
+    let req_data = {
+      url: this.media_base + endpoint,
+      method: 'POST',
+      data: param
+    };
+    const r = new Request(req_data.url);
+    r.method = req_data.method;
     r.headers = {
       "Content-Type": "multipart/form-data",
-      "Authorization": await this._getAuthHeader(method, url, param)
+      ...this._getAuthHeader(req_data)
     };
-    r.addImageToMultipart(
-      image, "media"
-    );
-    return r.loadJSON();
-  }
-
-  // ._bodyParamReq ... for POST, PUT, PATCH DELETE
-  async _bodyParamReq(method, url, param){
-    const r = new Request(url);
-    r.method = method;
-    r.headers = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": await this._getAuthHeader(method, url, param)
+    r.addImageToMultipart(image, "media");
+    for (key in param){
+      r.addParameterToMultipart(key, param[key])
     };
-    r.body = this._encodeBody(opt.param);
     return r.loadJSON();
   };
   
-  // ._queryParamReq() ... for GET
-  async _queryParamReq(method, url, param){
-    const urlQ = url + "?" + Object.keys(param).map((key)=>{
-      return key + "=" + this._rfc3986(param[key]);
-    }).join("&");
-    const r = new Request(urlQ);
-    r.method = method;
-    r.headers = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": await this._getAuthHeader(method, url, param)
-    }
-    return r.loadJSON();
-  };
-  
-  // ._getAuthHeader(...)
-  async _getAuthHeader(method, url, param){
-    const oauthBaseParam = {
-      oauth_consumer_key: this.CK,
-      oauth_token: this.AT,
-      oauth_nonce: await this._nonce(),
-      oauth_timestamp: this._unix(),
-      oauth_signature_method: "HMAC-SHA1",
-      oauth_version: "1.0"
-    };
-    const oauthParam = {
-      ...param,
-      ...oauthBaseParam
-    };
-    const signature = await this._generateSignature(
-      method,
-      url,
-      oauthParam,
-      this.CS,
-      this.AS
-    );
-    const oauthParamWithSign = {
-      ...oauthParam,
-      ...{ oauth_signature: signature }
-    };
-    return "OAuth " + Object.keys(oauthParamWithSign)
-      .sort()
-      .map((key)=>{
-        return `${key}="${this._rfc3986(oauthParamWithSign[key])}"`;
-      }).join(", ");
-  };
-  
-  async _generateSignature(method, url, param, CS, AS){
-    // debug
-    /*
-    [
-      "## Signable argument ##",
-      `method: ${method}`,
-      `url: ${url}`,
-      `param: ${JSON.stringify(param)}`,
-      `CS: ${CS}`,
-      `AS: ${AS}`,
-      "## ----------------- ##"
-    ].map((str)=>{console.log("  > "+str)});
-    */
-    // signBaseKey
-    const signBaseKey = [
-      this._rfc3986(CS),
-      this._rfc3986(AS)
-    ].join("&");
-    //console.log(`signBaseKey: ${signBaseKey}`);
-    // paramString
-    const paramString = Object.keys(param).sort().map((key)=>{
-      return this._rfc3986(key) + "=" + this._rfc3986(param[key]);
+  _buildParamString(param){
+    return Object.keys(param).sort().map((k)=>{
+      return `${k}=${this._rfc3986(param[k])}`;
     }).join('&');
-    // signBaseData
-    const signBaseData = [
-      method.toUpperCase(),
-      this._rfc3986(url),
-      this._rfc3986(paramString)
-    ].join("&");
-    //console.log(`signBaseData: ${signBaseData}`);
-    const hash = this.CryptoJS.HmacSHA1(
-      signBaseData,
-      signBaseKey
-    );
-    return this.CryptoJS.enc.Base64.stringify(hash);
-  }
-  
-
-  // encodeBody(param)
-  _encodeBody(param){
-    return Object.keys(param)
-      .sort()
-      .map((key)=>{
-        return this._rfc3986(key) + "=" + this._rfc3986(param[key]);
-      }).join("&");
   };
-
+  
+  _chooseBaseUrl(name){
+    let errorMessage = `_chooseBaseUrl(name) recieve something other than 'rest', 'media'.`;
+    switch (name){
+      case 'rest': return this.rest_base; break;
+      case 'media': return this.media_base; break;
+      default: console.error(errorMessage);
+    };
+  };
+  
+  _getAuthHeader(request_data){
+    let auth_data = this.oauth.authorize(
+      request_data, this.token
+    );
+    let authHeader = this.oauth.toHeader(auth_data);
+    return authHeader;
+  };
   // _rfc3986(str)
   // MDN Web Docs: encodeURIComponent()
   // https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
@@ -166,27 +116,9 @@ module.exports = class Twista {
     });
   };
   
-  // _nonce()
-  async _nonce(){
-    const wv = new WebView();
-    wv.loadHTML("<html><head><meta charset='UTF-8'></head></html>");
-    const n = await wv.evaluateJavaScript(`
-	  const array = new Uint32Array(1);
-	  crypto.getRandomValues(array);
-	  completion(array[0]);
-    `, true
-    );
-    return n.toString()
+  _pjson(value){
+    return JSON.stringify(value, null, 2);
   };
-  
-  // _unix()
-  _unix(){
-	const date = new Date();
-	return Math.floor(date.getTime()/1000);
-  };
-  
-  // pjson()
-  _pjson(obj){
-    console.log(JSON.stringify(obj, null, 3));
-  };
-}
+};
+
+module.exports = Twista;
