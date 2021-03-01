@@ -112,8 +112,5 @@ const res_upload = await twista.uploadImage(
 #### Return Value
 It returns JSON.
 
-## Author
-- [Twitter](https://twitter.com/k_melodyline?s=21)
-
 ## License
 [MIT License](LICENSE)
