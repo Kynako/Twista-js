@@ -6,28 +6,11 @@ A simple Twitter API liblary for Scriptable.
 - [Scriptable](https://scriptable.app/)
 
 ## Usage
-
-### Initarize
-```
-// Example Directly Tree
-iCloud/Scriptbale
-└ modules
-  ├ Twista.js
-  ├ unpkg.js
-  ├ (crypto-js)
-  │ └ (crypto-js.js)
-  └ (oauth-1.0a)
-    └ (oauth-1.0a.js)
-// crypto-js and oauth-1.0a will be saved on next step.
-```
+[Import Twista.scriptable](src/Twista.scriptable)
 
 ### Ready
 ```JavaScript
-// libraries
-const unpkg = importModule('modules/unpkg');
-const OAuth = await unpkg('oauth-1.0a');
-const CryptoJS = await unpkg('crypto-js');
-const Twista = importModule('modules/Twista');
+const Twista = importModule('Twista');
 // environmental variables
 const ENV = {
   CK: ConsumerKey,
@@ -35,13 +18,23 @@ const ENV = {
   AT: AccessToken,
   AS: AccessTokenSecret
 };
+/* hasher
+ * must return HmacSHA1 signature encoded by Base64.
+ */
+const CryptoJS = importModule('crypto-js.min');
+function hasher (base, key){
+  return CryptoJS.enc.Base64.stringify(
+    CryptoJS.HmacSHA1(base, key);
+  );
+};
 // instance
-const tw = new Twista(ENV, OAuth, CryptoJS);
+const twista = new Twista(ENV, hasher);
 ```
 
 ### Get tweet
 ```JavaScript
-const userData = await tw.get(
+const userData = await twista.requestJSON(
+  'GET',
   'users/show.json',
   { screen_name: 'Twitter' }
 );
@@ -50,7 +43,8 @@ console.log(userData);
 
 ### Post Tweet
 ```JavaScript
-const postTweet = await tw.post(
+const postTweet = await twista.requestJson(
+  'POST'
   'statuses/update.json',
   { status: 'Hello World!!' }
 );
@@ -60,11 +54,9 @@ console.log(postTweet);
 ### Post Tweet (with Image)
 ```JavaScript
 const image = await Photos.fromLibrary();
-const res_image = await tw.upload_image(
-  'media/upload.json',
-  image
-);
-const res_tweet = tw.post(
+const res_upload = await twista.uploadImage(image);
+const res_tweet = twista.requestJson(
+  'POST',
   'statuses/update.json',
   {
     status: 'This is my best photo.', 
@@ -75,15 +67,25 @@ console.log(res_tweet);
 ```
 
 ## Reference
-### `.get(endpoint, param, basename)`
-`.get()` sends GET request to endpoint with parameter.
+### `twista.requestJson()`
+`.requestJson()` sends request to endpoint with parameter.
 
+### Syntax
+```javascript
+const res = twista.requestJson(
+  method,
+  endpoint,
+  (param),
+  (basename)
+);
+```
 #### Argument
+- `method` ... Request method.
 - `endpoint` ... REST API Endpoint.
    - It must end with .json.
 - `param` ... Parameter for request body.
    - e.g.) `{screen_name: 'Twitter'}`
-- `basename` ... choose the base of url.
+- `basename` ... Option. Choose the base of url. Default is `rest`.
    - `rest` ... `https://api.twitter.com/1.1/`
    - `media` ... `https://upload.twitter.com/1.1/`
 
@@ -92,29 +94,21 @@ It returns JSON.
 
 ---
 
-### `.post(endpoint, param)`
-`.post()` sends POST request to endpoint with parameters.
+### `twista.uploadImage()`
+`.uploadImage()` uploads an image using `https://media.twitter.com/media/upload.json`.
+
+#### Syntax
+```javascript
+const res_upload = await twista.uploadImage(
+  image,
+  (param)
+);
+```
 
 #### Argument
-- `endpoint` ... REST API Endpoint.
-   - It must end with .json.
-- `param` ... Parameter for request body.
-   - e.g.) `{status: 'Hello World!!'}`
- 
-#### Return Value
-It refurns JSON.
-
----
-
-### `.upload_image(endpoint, image, patam)`
-`.upload_image()` uploads image.
-
-#### Argument
-- `endpoint` ... REST API Endpoint.
-   - It must end with .json.
 - `image` ... An `Image` Object
    - e.g.) `Photos.fromLibrary()`, `Image.fromFile()`
-- `param` ...
+- `param` ... Option.
 #### Return Value
 It returns JSON.
 
@@ -122,4 +116,4 @@ It returns JSON.
 - [Twitter](https://twitter.com/k_melodyline?s=21)
 
 ## License
-[MIT License](/LICENSE)
+[MIT License](LICENSE)
