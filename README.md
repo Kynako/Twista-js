@@ -4,13 +4,9 @@ A simple Twitter API liblary for Scriptable.
 
 ## Requirement
 - [Scriptable](https://scriptable.app/)
-- [unpkg.js](https://gist.github.com/ZicklePop/603b19dd3b9e09f99030bc24e616ca6c)
-- [CryptoJS](https://cryptojs.gitbook.io/docs/)
-   - CryptoJS.HmacSHA1()
-   - CryptoJS.enc.Base64.stringify()
-- [oauth-1.0a.js](https://github.com/ddo/oauth-1.0a)
 
 ## Usage
+
 ### Initarize
 ```
 // Example Directly Tree

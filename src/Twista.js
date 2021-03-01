@@ -1,7 +1,6 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: blue; icon-glyph: feather-alt;
-
 /*!
  * Twista-js
  *
@@ -10,73 +9,58 @@
  * This software is released under the MIT license.
  * see https://github.com/Kynako/Twista-js/blob/main/LICENSE
  */
-
 class Twista {
-  constructor(env, OAuth, CryptoJS){
-    this.CK = env.CK,
-    this.CS = env.CS,
-    this.AT = env.AT,
-    this.AS = env.AS,
-    this.token = {
-      key: this.AT,
-      secret: this.AS
-    },
-    this.rest_base = "https://api.twitter.com/1.1/",
-    this.media_base = "https://upload.twitter.com/1.1/",
-    this.oauth = OAuth({
-      consumer: {
-        key: this.CK,
-        secret: this.CS
-      },
-      signature_method: 'HMAC-SHA1',
-      hash_function(base_string, key){
-        return CryptoJS // dp;
-          .HmacSHA1(base_string, key) // dp;
-          .toString(CryptoJS.enc.Base64);
-      } // dp;
-    });
+  constructor(env, hasher){
+    this.CK = env.CK;
+    this.CS = env.CS;
+    this.AT = null || env.AT;
+    this.AS = null || env.AS;
+    this.BT = null || env.BT;
+    this.hasher = hasher;
+    this.baseUrl = {
+      rest: 'https://api.twitter.com/1.1/',
+      media: 'https://upload.twitter.com/1.1/'
+    };
   };
   
-  get(endpoint, param, basename='rest'){
-    let base = this._chooseBaseUrl(basename);
-    let url = base + endpoint + '?' + this._buildParamString(param);
-    let req_data = {
-      url: url,
-      method: 'GET',
-      data: {}
+  async requestJson(method, endpoint, param, base='rest'){
+    const raw_url = this.baseUrl[base] + endpoint;
+    const req_url = method == 'GET'
+      ? this.baseUrl[base]
+        + endpoint
+        + '?'
+        + this._buildParamString(param)
+      : this.baseUrl[base] + endpoint;
+    let req_body = method == 'GET'
+      ? null
+      : this._buildParamString(param);
+    const r = new Request(req_url);
+    const authHeader = await this._getAuthHeader(
+      method, raw_url, param
+    );
+    r.method = method.toUpperCase();
+    r.headers = {
+      ...authHeader,
+      "Content-Type": "application/x-www-form-urlencoded"
     };
-    let r = new Request(req_data.url);
-    r.method = req_data.method;
-    r.headers = {...this._getAuthHeader(req_data)};
-    return r.loadJSON();
+    r.body = req_body;
+    const json = await r.loadJSON();
+    return {
+      json: json,
+      response: r.response
+    }; 
   };
-  
-  post(endpoint, param, basename='rest'){
-    let base = this._chooseBaseUrl(basename);
-    let url = base + endpoint;
-    let req_data = {
-      url: url,
-      method: 'POST',
-      data: param
-    };
-    let r = new Request(req_data.url);
-    r.method = req_data.method;
-    r.headers = {...this._getAuthHeader(req_data)};
-    r.body = this._buildParamString(param);
-    return r.loadJSON();
-  };
-
-  async upload_image(endpoint, image, param){
-    let req_data = {
-      url: this.media_base + endpoint,
-      method: 'POST',
-      data: param
-    };
-    const r = new Request(req_data.url);
-    r.method = req_data.method;
+    
+  async uploadImage(image,  param={}){
+    const req_url = this.baseUrl['media'] + 'media/upload.json';
+    const r = new Request(req_url);
+    r.method = 'POST';
+    const authHeader = await this._getAuthHeader(
+      'POST', req_url, param
+    );
     r.headers = {
       "Content-Type": "multipart/form-data",
-      ...this._getAuthHeader(req_data)
+      ...authHeader
     };
     r.addImageToMultipart(image, "media");
     for (key in param){
@@ -84,40 +68,80 @@ class Twista {
     };
     return r.loadJSON();
   };
-  
+
   _buildParamString(param){
-    return Object.keys(param).sort().map((k)=>{
-      return `${k}=${this._rfc3986(param[k])}`;
+    return Object.keys(param)
+      .sort()
+      .map(key=>{
+        return this._rfc3986(key) + '=' + this._rfc3986(param[key]);
     }).join('&');
   };
   
-  _chooseBaseUrl(name){
-    let errorMessage = `_chooseBaseUrl(name) recieve something other than 'rest', 'media'.`;
-    switch (name){
-      case 'rest': return this.rest_base; break;
-      case 'media': return this.media_base; break;
-      default: console.error(errorMessage);
+  async _getAuthHeader(method, url, param){
+    const oauthBaseParam = {
+      oauth_consumer_key: this.CK,
+      oauth_token: this.AT,
+      oauth_nonce: await this._nonce(),
+      oauth_timestamp: this._unix(),
+      oauth_signature_method: 'HMAC-SHA1',
+      oauth_version: '1.0'
     };
+    const oauthParam = {
+      ...param, ...oauthBaseParam
+    };
+    const signature = this._generateSignature(
+      method, url, oauthParam
+    );
+    const oauthParamWithSign = {
+      ...oauthParam,
+      ...{ oauth_signature: signature }
+    };
+    const authString = 'OAuth ' + Object.keys(oauthParamWithSign).sort().map(key=>{
+      return this._rfc3986(key) + '=' + this._rfc3986(oauthParamWithSign[key]);
+    }).join(', ');
+    return {'Authorization': authString};
   };
   
-  _getAuthHeader(request_data){
-    let auth_data = this.oauth.authorize(
-      request_data, this.token
+  _generateSignature(method, url, param){
+    const signBaseKey = [
+      this._rfc3986(this.CS),
+      this._rfc3986(this.AS)
+    ].join('&');
+    const paramString = this._buildParamString(param);
+    const signBaseData = [
+      this._rfc3986(method),
+      this._rfc3986(url),
+      this._rfc3986(paramString)
+    ].join('&');
+    const signature = this.hasher(
+      signBaseData,
+      signBaseKey
     );
-    let authHeader = this.oauth.toHeader(auth_data);
-    return authHeader;
+    return signature;
   };
-  // _rfc3986(str)
+
   // MDN Web Docs: encodeURIComponent()
   // https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
-  _rfc3986(str) {
+  _rfc3986(str){
     return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
       return '%' + c.charCodeAt(0).toString(16);
     });
   };
   
-  _pjson(value){
-    return JSON.stringify(value, null, 2);
+  async _nonce(){
+    const wv = new WebView();
+    const n = await wv.evaluateJavaScript(`
+	  const array = new Uint32Array(1);
+	  crypto.getRandomValues(array);
+	  completion(array[0]);
+    `, true
+    );
+    return n.toString()
+  };
+  
+  _unix(){
+	const date = new Date();
+	return Math.floor(date.getTime()/1000);
   };
 };
 
