@@ -4,7 +4,7 @@
 /*!
  * Twista-js
  *
- * Copyright (c) ©︎ 2021 Kynako
+ * Copyright (c) 2021 Kynako
  *
  * This software is released under the MIT license.
  * see https://github.com/Kynako/Twista-js/blob/main/LICENSE
