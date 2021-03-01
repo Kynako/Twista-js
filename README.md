@@ -1,12 +1,12 @@
 # Twista-js
 ## OverView
-A simple Twitter API liblary for Scriptable.
+A simple Twitter API library for Scriptable.
 
 ## Requirement
 - [Scriptable](https://scriptable.app/)
 
 ## Usage
-[Import Twista.scriptable](src/Twista.scriptable)
+[Import Twista.scriptable](https://raw.githubusercontent.com/Kynako/Twista-js/main/src/Twista.scriptable)
 
 ### Ready
 ```JavaScript
