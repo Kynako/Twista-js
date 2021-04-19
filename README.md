@@ -1,4 +1,8 @@
 # Twista-js
+## INPORTANT!
+- This repository is moving to [Kynako/Scriptable](https://github.com/Kynako/Scriptable)
+- This repository will be archived soon.
+
 ## OverView
 A simple Twitter API library for Scriptable.
 
