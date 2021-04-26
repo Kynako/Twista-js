@@ -10,27 +10,27 @@
  * see https://github.com/Kynako/Twista-js/blob/main/LICENSE
  */
 class Twista {
-  constructor(env, hasher){
-    this.CK = env.CK;
-    this.CS = env.CS;
-    this.AT = null || env.AT;
-    this.AS = null || env.AS;
-    this.BT = null || env.BT;
-    this.hasher = hasher;
+  constructor(env){
+    this.CK = env.CK || null;
+    this.CS = env.CS || null;
+    this.AT = env.AT || null;
+    this.AS = env.AS || null;
+    this.BT = env.BT || null;
+    this.wv = new WebView();
     this.baseUrl = {
       rest: 'https://api.twitter.com/1.1/',
       media: 'https://upload.twitter.com/1.1/'
     };
   };
   
-  async requestJson(method, endpoint, param, base='rest'){
-    const raw_url = this.baseUrl[base] + endpoint;
+  async requestJson(method, endpoint, param, basename='rest'){
+    const raw_url = this.baseUrl[basename] + endpoint;
     const req_url = method == 'GET'
-      ? this.baseUrl[base]
+      ? this.baseUrl[basename]
         + endpoint
         + '?'
         + this._buildParamString(param)
-      : this.baseUrl[base] + endpoint;
+      : this.baseUrl[basename] + endpoint;
     let req_body = method == 'GET'
       ? null
       : this._buildParamString(param);
@@ -89,7 +89,7 @@ class Twista {
     const oauthParam = {
       ...param, ...oauthBaseParam
     };
-    const signature = this._generateSignature(
+    const signature = await this._generateSignature(
       method, url, oauthParam
     );
     const oauthParamWithSign = {
@@ -102,7 +102,7 @@ class Twista {
     return {'Authorization': authString};
   };
   
-  _generateSignature(method, url, param){
+  async _generateSignature(method, url, param){
     const signBaseKey = [
       this._rfc3986(this.CS),
       this._rfc3986(this.AS)
@@ -113,13 +113,41 @@ class Twista {
       this._rfc3986(url),
       this._rfc3986(paramString)
     ].join('&');
-    const signature = this.hasher(
+    const signature = await this._hmacSha1(
       signBaseData,
       signBaseKey
     );
     return signature;
   };
 
+  async _hmacSha1(base, key){
+    const html = `
+    <script>
+      async function main(BASE, KEY, CALLBACK){
+        const te = new TextEncoder('utf-8');
+        const cryptoKey = await crypto.subtle.importKey(
+          'raw',
+          te.encode(KEY),
+          {name: 'HMAC', hash: {name: 'SHA-1'}},
+          false,
+          ['sign']
+        );
+        const signature = await crypto.subtle.sign(
+          'HMAC',
+          cryptoKey,
+          te.encode(BASE)
+        );
+        const buff = new Uint8Array(signature);
+        const str = btoa(String.fromCharCode(...buff))
+        return str;
+      };
+    </script>
+    `;
+    const js = `main('${base}', '${key}').then(completion); ''`;
+    await this.wv.loadHTML(html);
+    const result = await this.wv.evaluateJavaScript(js, true);
+    return result;
+  };
   // MDN Web Docs: encodeURIComponent()
   // https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
   _rfc3986(str){
