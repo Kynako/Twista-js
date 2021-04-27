@@ -22,17 +22,8 @@ const ENV = {
   AT: AccessToken,
   AS: AccessTokenSecret
 };
-/* hasher
- * must return HmacSHA1 signature encoded by Base64.
- */
-const CryptoJS = importModule('crypto-js.min');
-function hasher (base, key){
-  return CryptoJS.enc.Base64.stringify(
-    CryptoJS.HmacSHA1(base, key);
-  );
-};
 // instance
-const twista = new Twista(ENV, hasher);
+const twista = new Twista(ENV);
 ```
 
 ### Get tweet
